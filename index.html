@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>Postman</title>
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="./css/bootstrap-slider.min.css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<style>
+		.main{
+			width: 100%;
+			height: 100%;
+			margin: 0px;
+			padding: 0px;
+		}
+		#map {
+			height: 665px;
+	        background-color: grey;
+	    }
+	    #list-view {
+	    	border: 1px solid #eee;
+	      	margin-top: 20px;
+	    }
+	    h1{
+	      	font-size: 20px;
+	    }
+	    .col-md-10{
+	    	padding: 3px;
+	    	margin: 0px;
+	    }
+	    .col-md-2{
+	    	padding: 3px;
+	    	margin: 0px;
+	    }
+	    .hide{
+	    	display: none;
+	    }
+	    #ex1Slider .slider-selection {
+			background: #BABABA;
+		}
+    </style>
+</head>
+<body>
+	<div class="main">
+		<div class="raw">
+			<div class="col-md-10">
+				<div id="map"></div>
+			</div>
+			<div class="col-md-2">
+				<div class="form-group">
+				  <label for="comment">Euler Circuit:</label>
+				  <textarea class="form-control" rows="10" id="comment"></textarea>
+				</div>
+
+				<div class="input-group">
+		            <label class="input-group-btn">
+		                <span class="btn btn-primary">
+		                    Browse&hellip; <input id="file" type="file" style="display: none;" multiple>
+		                </span>
+		            </label>
+		            <input type="text" class="form-control" readonly>
+		        </div>
+		        <br/>
+		        <div class="form-group">
+		        	<button id="readFile" class="btn btn-primary">Load File</button>
+					<button id="caculator" class="btn btn-primary hide">Calculator</button>
+		        </div>
+
+		        <div class="form-group">
+		        	<button id="showCircuit" class="btn btn-primary hide">Poly Line</button>
+		        	<button id="showMarkers" class="btn btn-primary hide">Markers</button>
+		        </div>
+
+		        <div class="form-group">
+		        	
+		        </div>
+		        <div class="form-group">
+					<button id="oddedge" class="btn btn-primary hide">Odd Edges</button>
+		        </div>
+		        <div class="form-group">
+					<button id="animate" class="btn btn-primary hide">Animate Vertex Odd</button>
+		        </div>
+		        <div class="form-group">
+					<div class="slider slider-horizontal hide" id="slide">
+			        	<p>Slow</p>
+			        	<input id="slider" data-slider-id='slide' type="text" data-slider-min="1" data-slider-max="50" data-slider-step="1" data-slider-value="20"/>
+			        </div>
+		        </div>
+		        <br/>
+		        <br/>
+		        <div class="form-group">
+					<button type="button" id="pause" class="btn .btn-success hide">
+					    <span class="glyphicon glyphicon-pause"></span> Pause
+					</button>
+		        </div>
+			</div>
+		</div>
+	</div>
+	<script>
+
+		// declare goal variable
+		var map;
+		var markers = [];
+		var directionsDisplay;
+		var directionsService;
+		var service;
+		var matrix;
+		var labelIndex = 0;
+		// for delay in request
+		var delay = 1;
+		var verDoNotFound = [];
+		var numberRespone = 0;
+
+		// matrix
+		var matrixAdjacent;
+		var numEdgeOfAdjacent=0;
+		var matrixWeight;
+		var matrixPairShort;
+		var matrixPathPairShort;
+		var matrixOdd;
+		var matrixPathOdd;
+
+		// matrix for show
+		var matrixWeightPreview;
+		var matrixOddPreview;
+
+		// list vertexs have order odd
+		var listOdd = [];
+
+		// circuit eculer
+		var circuit = [];
+
+		// poly
+		var poly;
+
+		// delay animimation
+		var delayAnima = 20000;
+
+	    function initMap() {
+	        directionsDisplay = new google.maps.DirectionsRenderer();
+	        directionsService = new google.maps.DirectionsService();
+	        service = new google.maps.DistanceMatrixService();
+	        map = new google.maps.Map(document.getElementById('map'), {
+	          zoom: 17,
+	          center: {lat: 10.764740339558902, lng: 106.67769134044647 }
+	        });
+
+	        directionsDisplay.setMap(map);
+
+	        // get location with event click on map
+	        map.addListener('click', function(event){
+	        	console.log(event.latLng + "");
+	        	//showLocation(event.latLng);
+	        	addMarker(event.latLng, 300);
+	        });
+
+	        var marker = new google.maps.Marker({
+	        	position: {lat: 10.764339817996591, lng: 106.67956352233887},
+	        	map: map,
+	        	draggable: true,
+	        	animation: google.maps.Animation.DROP
+	        });
+	        markers.push(marker);
+	    }
+
+	    function addLineCircuit(){
+	    	poly.setMap(map);
+	    }
+
+	    function removeLineCircuit(){
+	    	poly.setMap(null);
+	    }
+
+	    
+
+	    function drawCircuitOnMap(){
+	    	var pathCile = [];
+	    	for(var i = 0; i < circuit.length; i++){
+	    		pathCile.push(JSON.parse('{"lat":' + markers[circuit[i]].getPosition().lat() + ', "lng":' + markers[circuit[i]].getPosition().lng() + '}'));
+	    	}
+
+	    	var lineSymbol = {
+		        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+		        scale: 4,
+		        strokeColor: '#4caf50',
+		        fillColor: '#2e7d32',
+		        fillOpacity: 0.9
+	        };
+
+	    	poly = new google.maps.Polyline({
+			    path: pathCile,
+			    icons: [{
+		            icon: lineSymbol,
+		            offset: '100%'
+		        }],
+		        strokeColor: '#e53935',
+				strokeOpacity: 0.8,
+				strokeWeight: 5
+		    });
+
+		    addLineCircuit();
+		    animateCircuit(poly);
+	    }
+
+	    var isPause = false;
+
+	    function animateCircuit(line) {
+	        var count = 0;
+	        var ind = 0;
+	        window.setInterval(function() {
+	        	if(isPause == false){
+	        		count = (count + 1) % delayAnima;
+		            var icons = line.get('icons');
+		            icons[0].offset = (count / (delayAnima / 100)) + '%';
+		            line.set('icons', icons);
+	        	}
+	        }, 20);
+	    }
+
+	    var listPolysVerOdd = [];
+
+	    function drawVertexOddOnMap(){
+	    	var pp = [];
+			for(var i = 0; i < matrixOdd.length; i++){
+				for(var j = i+1; j < matrixOdd.length; j++){
+					var p = new Array;
+					if(matrixOdd[i][j] > 0){
+						p.push(listOdd[i]);
+						p.push(listOdd[j]);
+						pp.push(p);
+					}
+				}
+			}
+
+			for(var i = 0; i < pp.length; i++){
+				var pt = new Array;
+				pt.push(JSON.parse('{"lat":' + markers[pp[i][0]].getPosition().lat() + ', "lng":' + markers[pp[i][0]].getPosition().lng() + '}'));
+				pt.push(JSON.parse('{"lat":' + markers[pp[i][1]].getPosition().lat() + ', "lng":' + markers[pp[i][1]].getPosition().lng() + '}'));
+				var pol = new google.maps.Polyline({
+				    path: pt,      
+					strokeColor: '#1e88e5',
+				    strokeOpacity: 1.0,
+				    strokeWeight: 7
+			    });
+			    listPolysVerOdd.push(pol);
+			    pol.setMap(map);
+			}
+	    }
+
+	    function removePolysVerOdd(){
+	    	for(var i = 0; i < listPolysVerOdd.length; i++){
+	    		listPolysVerOdd[i].setMap(null);
+	    	}
+	    }
+
+	    function showPolysVerOdd(){
+	    	for(var i = 0; i < listPolysVerOdd.length; i++){
+	    		listPolysVerOdd[i].setMap(map);
+	    	}
+	    }
+
+
+	    // Adds a marker to the map and push to the array.
+	    function addMarker(location, timeout) {
+	    	window.setTimeout(function(){
+	    		var marker = new google.maps.Marker({
+			        position: location,
+			        animation: google.maps.Animation.DROP,
+			        label: (labelIndex++).toString()
+	        	});
+	        	markers.push(marker);
+	    	}, timeout);
+	    }
+
+
+      	// Sets the map on all markers in the array.
+      	function setMapOnAll(map) {
+	        for (var i = 0; i < markers.length; i++) {
+	          	markers[i].setMap(map);
+	        }
+	    }
+	    
+
+	    // Removes the markers from the map, but keeps them in the array.
+	    function clearMarkers() {
+	        setMapOnAll(null);
+	    }
+
+
+	    // Shows any markers currently in the array.
+	    function showMarkers() {
+	        setMapOnAll(map);
+	    }
+
+
+      	// Deletes all markers in the array by removing references to them.
+      	function deleteMarkers() {
+        	clearMarkers();
+        	markers = [];
+        	labelIndex = 0;
+      	}
+
+      
+
+      	// add inforwindow for marker and show animation on it
+        function addTileAndEvent(marker, Scmessage){
+        	var infowindow = new google.maps.InfoWindow({
+        		content: Scmessage,
+        		position: marker.position
+        	});
+
+        	marker.addListener('click', function(){
+        		infowindow.open( marker.map,marker);
+
+        		if(marker.getAnimation() != null){
+        			marker.setAnimation(null);
+        		}else{
+        			marker.setAnimation(google.maps.Animation.BOUNCE);
+        		}
+        	});
+        }
+
+      	
+        // add event to button readFile
+        var btnloadFile = document.getElementById("readFile");
+        btnloadFile.addEventListener('click', function(){
+        	fcReadFile();
+        	
+        }); // read file point
+
+        var isClick = false;
+        var isDouble = true;
+        var btnShowCircuit = document.getElementById("showCircuit");
+
+        btnShowCircuit.addEventListener('click', function(){
+        	if(circuit.length != 0){
+        		if(isClick == false){
+        			drawCircuitOnMap();
+        			isClick = true;
+        			slide.classList.remove("hide");
+        			btnPause.classList.remove("hide");
+        		}else {
+        			if(isDouble == false){
+        				addLineCircuit();
+        				isDouble = true;
+        				slide.classList.remove("hide");
+        				btnPause.classList.remove("hide");
+        			} else {
+        				removeLineCircuit();
+        				isDouble = false;
+        				slide.classList.add("hide");
+        				btnPause.classList.add("hide");
+        			}
+        		}
+        	}
+        });
+
+        var isClickMarker = false;
+        var btnShowMarkers = document.getElementById("showMarkers");
+        btnShowMarkers.addEventListener('click', function(){
+        	if(markers.length != 0){
+        		if(isClickMarker == false){
+        			showMarkers();
+        			btnAnimateVerOdd.classList.remove("hide");
+        			isClickMarker = true;
+        		} else {
+        			clearMarkers();
+        			btnAnimateVerOdd.classList.add("hide");
+        			isClickMarker = false;
+        		}
+        		
+        	}
+        });
+
+        var isClickOddEdge = false;
+        var isDoubleOddEdge = true;
+        var btnOddEdge = document.getElementById("oddedge");
+        btnOddEdge.addEventListener('click', function(){
+        	if(isClickOddEdge == false){
+        			drawVertexOddOnMap();
+        			isClickOddEdge = true;
+        		}else {
+        			if(isDoubleOddEdge == false){
+        				showPolysVerOdd();
+        				isDoubleOddEdge = true;
+        			} else {
+        				removePolysVerOdd();
+        				isDoubleOddEdge = false;
+        			}
+        		}
+        });
+
+        var isAniClick = false;
+        var btnAnimateVerOdd = document.getElementById("animate");
+        btnAnimateVerOdd.addEventListener('click', function(){
+        	animateVerOdd();
+        });
+
+        
+        function animateVerOdd(){
+        	if(isAniClick == false){
+        		for(var i = 0; i < listOdd.length; i++){
+	        		markers[listOdd[i]].setAnimation(google.maps.Animation.BOUNCE);
+	        	}
+	        	isAniClick = true;
+        	} else {
+        		for(var i = 0; i < listOdd.length; i++){
+	        		markers[listOdd[i]].setAnimation(null);
+	        	}
+	        	isAniClick = false;
+        	}
+        }
+
+        var slide = document.getElementById("slide");
+
+        var btnPause = document.getElementById("pause");
+        btnPause.addEventListener('click', function(){
+        	if(isPause == false){
+        		isPause = true;
+        	} else{
+        		isPause = false;
+        	}
+        });
+
+        // get content of matrixWeight from file
+        function readFileMatrixWeight(contentFile){
+        	var content = contentFile.split("\n");
+        	var numVer = content[0].split(" ")[0];
+
+        	// declare matrixWeight
+        	matrixWeight = new Array(numVer);
+
+        	for(var i = 1; i <= numVer; i++){
+        		matrixWeight[i-1] = new Array(numVer);
+        		var ar = content[i].split(" ");
+        		for(var j = 0; j < numVer; j++){
+        			matrixWeight[i-1][j] = parseInt(ar[j]);
+        		}
+        	}
+        	getListOderOdd(matrixWeight);
+        }
+
+        // lấy danh sách các đỉnh bậc lẻ
+        function getListOderOdd(matrixWeight){
+        	var numVer = matrixWeight.length;
+        	for(var i = 0; i < numVer; i++){
+        		var verAdjacent = 0;
+        		for(var j = 0; j < numVer; j++){
+        			if(matrixWeight[i][j] != 0){
+        				verAdjacent++;
+        			}
+        		}
+        		if(verAdjacent % 2 != 0){ // number odd
+        			listOdd.push(i);
+        		}
+        	}
+        }
+
+
+        // add event for button caculator
+        var btnCalculator = document.getElementById('caculator');
+        btnCalculator.addEventListener('click', function(){
+        	for(var i = 0; i < data.length; i++){
+        		if(i == 0){
+        			getContentForMaxtrixAdj(data[i]);
+        		}else if(i == 1){
+        			readFileMatrixWeight(data[i]);
+        		} else if(i == 2){
+        			deleteMarkers();
+					// read marker from file from contentFile and show on map
+					addMakerFromFileToMarkers(data[i]);
+        		}
+        	}
+
+        	createMatrixPairShort(matrixWeight);
+        	floydForMatrixOdd(matrixPairShort);
+        	createMaxtrixOdd(listOdd);
+
+        	tangBacMatrixAdjacent();
+        	findCircuitHierholzer(matrixAdjacent, 0);
+
+        	btnShowCircuit.classList.remove("hide");
+        	btnShowMarkers.classList.remove("hide");
+        	btnOddEdge.classList.remove("hide");
+        } );
+
+        function createMatrixPairShort(matrixWeight){
+        	var numVer = matrixWeight.length;
+        	matrixPairShort = new Array(numVer);
+        	matrixWeightPreview = new Array(numVer);
+        	for(var i = 0; i < numVer; i++){
+        		matrixPairShort[i] = new Array(numVer);
+        		matrixWeightPreview[i] = new Array(numVer);
+        		for(var j = 0; j < numVer; j++){
+        			if(i != j && matrixWeight[i][j] == 0){
+        				matrixPairShort[i][j] = Number.MAX_SAFE_INTEGER;
+        			}else {
+        				matrixPairShort[i][j] = matrixWeight[i][j];
+        			}
+        			matrixWeightPreview[i][j] = matrixWeight[i][j];
+        		}
+        	}
+        }
+
+        // create a matrix with vertexs have odd order
+        function createMaxtrixOdd(listOdd){
+        	var len = listOdd.length;
+        	matrixOdd = new Array(len);
+        	matrixPathOdd = new Array(len);
+        	matrixOddPreview = new Array(len);
+
+        	for(var i = 0; i < len; i++){
+        		matrixOdd[i] = new Array(len);
+        		matrixPathOdd[i] = new Array(len);
+        		matrixOddPreview[i] = new Array(len);
+        		for(var j = 0; j < len; j++){
+        			matrixOdd[i][j] = matrixPairShort[listOdd[i]][listOdd[j]];
+        			matrixPathOdd[i][j] = matrixPathPairShort[listOdd[i]][listOdd[j]];
+        			matrixOddPreview[i][j] = matrixOdd[i][j];
+        		}
+        	}
+
+        	// call thamLam get pair shortest
+        	thamLamForMatrixOdd(matrixOdd);
+        }
+
+        // tăng số bậc của ma trận kề (sau khi lấy được cặp đỉnh bậc lẻ có chiều dài ngắn nhất)
+        function tangBacMatrixAdjacent(){
+        	if(matrixAdjacent.length != 0){
+        		var len = matrixOdd.length;
+
+        		for(var i = 0; i < len; i++){
+        			for(var j = 0; j < len; j++){
+        				if(matrixOdd[i][j] != 0){
+        					matrixAdjacent[listOdd[i]][listOdd[j]]++;
+        				}
+        			}
+        		}
+        	}
+        }
+
+        // read content of matrix adjacent
+        function getContentForMaxtrixAdj(contentFile){
+        	var content = contentFile.split("\n");
+        	var len = content[0].split(' ');
+        	var numVer = parseInt(len[0]);
+        	var numEdge = parseInt(len[1]);
+        	numEdgeOfAdjacent = numEdge;
+        	matrixAdjacent = new Array(numVer);
+
+        	// console.log("số cạnh của danh sách kề:", numEdge);
+        	// console.log("số đỉnh của danh sách kề:", numVer);
+
+        	// construct
+        	for(var i = 0; i < numVer; i++){
+        		matrixAdjacent[i] = new Array(numVer);
+        		for(var j = 0; j < numVer; j++){
+        			matrixAdjacent[i][j] = 0;
+        		}
+        	}
+        	
+        	for(var k = 1; k <= numEdge; k++){
+        		var temp = content[k].split(' ');
+        		var i = parseInt(temp[0]);
+        		var j = parseInt(temp[1]);
+
+        		matrixAdjacent[i][j] = 1;
+        		matrixAdjacent[j][i] = 1;
+        	}
+
+        	//writeLogMaTrix(matrixAdjacent);
+        }
+
+
+        // merger matrix and matrixAdjacent to matrixWeight
+        function mergerMatrixAndMatrixAdjacent(matrix, matrixAdjacent){
+        	if(matrix.length != 0 && matrixAdjacent.length != 0){
+        		var len = matrixAdjacent[0].length;
+
+	        	matrixWeight = new Array(len);
+	        	for(var i = 0; i < len; i++){
+	        		matrixWeight[i] = new Array(len);
+
+	        		for(var j = 0; j < len; j++){
+	        			if(matrixAdjacent[i][j] == 1){
+	        				if(matrix[i][j] > matrix[j][i]){
+	        					matrixWeight[i][j] = matrix[j][i];
+	        				}else{
+	        					matrixWeight[i][j] = matrix[i][j];
+	        				}
+	        			}else{
+	        				matrixWeight[i][j] = 0;
+	        			}
+	        		}
+	        	}
+        	}else{ // matrix or matrixAdjacent enough 0
+
+        	}
+        }
+        
+        
+
+		// get data from file add to list markers
+		function addMakerFromFileToMarkers(contentFile){ 
+			var obj = JSON.parse('[' + contentFile + ']');
+			for(var i = 0; i < obj.length; i++){
+				addMarker(obj[i], 300);
+			}
+		}
+
+		// destroy click element after success
+		function destroyClickElement(event){
+			document.body.removeChild(event.target);
+		}
+
+		function showLocation(index){
+	    	var infowindow = new google.maps.InfoWindow({
+	        	content: markers[index].getPosition()+'',
+	        	position: markers[index].getPosition()
+	        });
+	    	infowindow.open(map, markers[index]);
+	    }
+
+    </script>
+    <script src="./scripts/algorithm.js"></script>
+    <script src="./scripts/readwritefile.js"></script>
+    <script src="./scripts/requestgoogleapi.js"></script>
+    <script src="./scripts/bootstrap-slider.min.js"></script>
+
+    <script >
+    	var slider = new Slider(document.getElementById("slider"), {
+			formatter: function(value) {
+				delayAnima = value * 500;
+				return value;
+			}
+		});
+
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAeGQxX_eKHeB-Ed8avGkme7wp57_KiFpM&callback=initMap">
+    </script>
+</body>
+</html>
