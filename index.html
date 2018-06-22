@@ -604,6 +604,7 @@
 
 		// get data from file add to list markers
 		function addMakerFromFileToMarkers(contentFile){ 
+			console.log(contentFile+"file");
 			var obj = JSON.parse('[' + contentFile + ']');
 			for(var i = 0; i < obj.length; i++){
 				addMarker(obj[i], 300);
